@@ -28,6 +28,7 @@
           <div class="header-mobile">
             <i class="bi bi-list" id="btn-menu"></i>
           </div>
+
           <div class="header-left">
             <a href="/" class="logo">Smart Shopping</a>
           </div>
@@ -46,9 +47,12 @@
 
           <div class="header-right">
             <div class="header-right-links">
-              <a href="account.html" id="accountLink"><i class="bi bi-person"></i></a>
+              <!-- ✅ profile page এ থাকলে account link profile ই থাকুক -->
+              <a href="profile.html" id="accountLink"><i class="bi bi-person"></i></a>
+
               <button class="search-button"><i class="bi bi-search"></i></button>
               <a href="#"><i class="bi bi-heart"></i></a>
+
               <div class="header-cart">
                 <a href="cart.html" class="header-cart-link">
                   <i class="bi bi-bag"></i>
@@ -104,32 +108,48 @@
     const pUid = document.getElementById("pUid");
     const ordersBox = document.getElementById("ordersBox");
 
+    // ✅ BDT formatter
+    function formatBDT(amount) {
+      const n = Number(amount || 0);
+      return "৳" + n.toLocaleString("en-BD");
+    }
+
     async function loadOrders(uid) {
       ordersBox.textContent = "Loading orders...";
-      const q = query(collection(db, "users", uid, "orders"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
 
-      if (snap.empty) {
-        ordersBox.innerHTML = "<p>No orders yet.</p>";
-        return;
+      try {
+        // ✅ createdAt থাকলে orderBy কাজ করবে, না থাকলে catch এ fallback
+        const q = query(collection(db, "users", uid, "orders"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          ordersBox.innerHTML = "<p>No orders yet.</p>";
+          return;
+        }
+
+        let html = "<ul style='padding-left:18px;'>";
+        snap.forEach((docu) => {
+          const o = docu.data();
+          html += `
+            <li style="margin-bottom:10px;">
+              <strong>Status:</strong> ${o.status || "pending"} |
+              <strong>Total:</strong> ${formatBDT(o.totalBDT ?? o.total ?? 0)} |
+              <strong>Items:</strong> ${(o.items || []).length}
+            </li>
+          `;
+        });
+        html += "</ul>";
+        ordersBox.innerHTML = html;
+
+      } catch (err) {
+        console.error(err);
+        ordersBox.innerHTML = "<p>Failed to load orders.</p>";
       }
-
-      let html = "<ul style='padding-left:18px;'>";
-      snap.forEach((docu) => {
-        const o = docu.data();
-        html += `<li style="margin-bottom:10px;">
-          <strong>Status:</strong> ৳{o.status || "pending"} |
-          <strong>Total:</strong> ৳{o.total || 0} |
-          <strong>Items:</strong> ৳{(o.items || []).length}
-        </li>`;
-      });
-      html += "</ul>";
-      ordersBox.innerHTML = html;
     }
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        window.location.href = "account.html"; // ✅ not logged in
+        window.location.href = "account.html";
         return;
       }
 
